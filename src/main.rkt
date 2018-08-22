@@ -28,27 +28,45 @@
 ; equation is: the sum of all the lengths + n-1, where n is number of lengths.
 ; }}}
 
-(print-board
-  (λ (lst)
-    (void)))
+(define aisle-rule->food-required
+  (λ (rule)
+    (cond [(number? rule) rule]
+          [else (+ (apply + rule)
+                   (- (length rule) 1))])))
+
+(define is-legal?
+  (λ (board row-rules col-rules)
+    #f))
+
+(define possible-moves
+  (λ (rule len)
+    '()))
 
 (define move
-  (λ (board col-rules row-rules ratings)
-    (let ([r (car ratings)])
-      (let ([orient (list-ref r 1)]
-            [dex (list-ref r 2)])
-        (let ([subj (list-ref (cond [(equal? orient #\c) col-rules]
-                                    [(equal? orient #\r) row-rules])
-                              dex)])
-          (void))))))
+  (λ (board row-rules col-rules ratings)
+    (cond
+      [(null? ratings) board]
+      [else
+        (let ([r (car ratings)])
+          (let ([orient (list-ref r 1)]
+                [dex (list-ref r 2)])
+            (let ([aisle (cond [(equal? orient #\r) row-rules]
+                               [(equal? orient #\c) col-rules])])
+              (let ([rule (list-ref aisle dex)])
+                (let ([moves (filter
+                               (λ (board)
+                                 (is-legal? board row-rules col-rules))
+                               (map (λ (m)
+                                      (place-move board m orient dex))
+                                    (possible-moves rule (length aisle))))])
+                  (cond
+                    [(null? moves) #f]
+                    [else
+                      (for/or ([b (in-list moves)])
+                        (move b row-rules col-rules (cdr ratings)))]))))))])))
 
 (define aisle-rules->food-required
   (λ (aisle-rules ch)
-    (define aisle-rule->food-required
-      (λ (rule)
-        (cond [(number? rule) rule]
-              [else (+ (apply + rule)
-                       (- (length rule) 1))])))
     (for/list ([rule (in-list aisle-rules)]
                [i (in-range (- (length aisle-rules) 1))])
       (list
@@ -57,15 +75,20 @@
         i))))
 
 (define run
-  (λ (col-rules row-rules)
-    (let ([col-rat (aisle-rules->food-required col-rules #\c)]
-          [row-rat (aisle-rules->food-required row-rules #\r)])
+  (λ (row-rules col-rules)
+    (let ([row-rat (aisle-rules->food-required row-rules #\r)]
+          [col-rat (aisle-rules->food-required col-rules #\c)])
       (let ([ratings (sort (append col-rat row-rat)
                            (λ (lst0 lst1)
                              (> (list-ref lst0 0) (list-ref lst1 0))))]
             [board (make-list (length row-rules)
                               (make-list (length col-rules) #\_))])
-        (move board col-rules row-rules ratings)))))
+        (move board row-rules col-rules ratings)))))
+
+(print-board
+  (λ (board)
+    (unless (null? board)
+      (map display board)))) ; TODO
 
 (define solve
   (λ ([in (current-input-port)])
@@ -74,10 +97,10 @@
         (let ([W (string->number (car l1))]
               [H (string->number (cadr l1))])
           (let ([col-rules (for/list ([w (in-range (- W 1))])
-                            (map string->number (string-split (read-line))))]
+                             (map string->number (string-split (read-line))))]
                 [row-rules (for/list ([h (in-range (- H 1))])
-                            (map string->number (string-split (read-line))))])
-            (board-print (run col-rules row-rules))))))))
+                             (map string->number (string-split (read-line))))])
+            (board-print (run row-rules col-rules))))))))
 
 (module+ main
   (call-with-input-file "input.txt"
