@@ -12,58 +12,104 @@
 ; to be continguously marked in the collumn and H lines of similarly formatted
 ; lengths for the rows, solve the nonogram.
 ;
-; Each length should be its own object and have knowledge of where it's placed;
+; Each segment should be its own object and have knowledge of where it's placed;
 ; at the time it is first placed it will have to choose the most adventitious
 ; placement by ranking each placement according to the food count of each
 ; aisle marked, and selecting the option that consumes food from the aisles
-; with the greatest abundance of food, thus placing the length in such a way
+; with the greatest abundance of food, thus placing the segment in such a way
 ; that the placement chosen allows for the greatest flexibility.  The
-; simulation will run from this point placing the lengths that would grow off
-; of the first length placed, and in so doing traces back moves when the
-; simulation hits a length that cannot be placed, for this reason the lengths
+; simulation will run from this point placing the segments that were ranked
+; under the first segment placed, and in so doing traces back moves when the
+; simulation hits a segment that cannot be placed, for this reason the segments
 ; will have to maintain a memory of their ranking of other possible placements.
 ;
-; The first length to place must be one whose aisle's lengths determine the
-; most space.  Keeping in mind that there must be a space between lengths, the 
-; equation is: the sum of all the lengths + n-1, where n is number of lengths.
+; The first segment to place must be one whose aisle's rules determine the
+; most space.  Keeping in mind that there must be a space between segments,
+; the equation is: the sum of all the lengths + n-1, where n is number of
+; segments.
 ; }}}
 
-(define aisle-rule->food-required
-  (λ (rule)
-    (cond [(number? rule) rule]
-          [else (+ (apply + rule)
-                   (- (length rule) 1))])))
+(require racket/string
+  racket/list)
+
+(define conforms-to-rule?
+  (λ (lst rule)
+    (let ([seg-lst (string-split (list->string lst) #rx"_")]
+          [num (if (number? rule) 1 (length rule))])
+      (and
+        (= (length seg-lst) num)
+        (for/and ([seg (in-list seg-lst)]
+                  [len (if (number? rule) (list rule) rule)])
+          (= (string-length seg) len))))))
 
 (define is-legal?
   (λ (board row-rules col-rules)
-    #f))
+    (and
+      (for/and ([row (in-list board)]
+                [rule (in-list row-rules)])
+        (conforms-to-rule? row rule))
+      (for/and ([col (in-list (for*/list ([i (in-range (- (length board) 1))]
+                                          [row (in-list board)])
+                                (list-ref row i)))]
+                [rule (in-list col-rules)])
+        (conforms-to-rule? col rule)))))
+
+(define aisle-rule->food-required
+  (λ (rule)
+    (cond [(null? rule) 0]
+          [(number? rule) rule]
+          [else (+ (apply + rule)
+                   (- (length rule) 1))])))
 
 (define possible-moves
   (λ (rule len)
-    '()))
+    (cond
+      [(number? rule)
+       (for ([beg (in-range (- len rule))])
+         (let ([end (+ beg (- rule 1))])
+           (for/list ([i (in-range (- len 1))])
+             (if (and (>= i beg) (<= i end))
+                 #\x
+                 #\_))))]
+      [else
+       (filter
+         (λ (lst)
+           (conforms-to-rule? lst rule))
+         (map flatten
+              (remove-duplicates
+                (permutations
+                  (append
+                    (map (λ (seg-len)
+                           (make-list seg-len #\x))
+                    rule)
+                    (make-list (- len (apply + rule)) #\_))))))])))
+
+(define place-move
+  (λ (board move orient dex)
+    board)) ; TODO
 
 (define move
   (λ (board row-rules col-rules ratings)
     (cond
       [(null? ratings) board]
       [else
-        (let ([r (car ratings)])
-          (let ([orient (list-ref r 1)]
-                [dex (list-ref r 2)])
-            (let ([aisle (cond [(equal? orient #\r) row-rules]
-                               [(equal? orient #\c) col-rules])])
-              (let ([rule (list-ref aisle dex)])
-                (let ([moves (filter
-                               (λ (board)
-                                 (is-legal? board row-rules col-rules))
-                               (map (λ (m)
-                                      (place-move board m orient dex))
-                                    (possible-moves rule (length aisle))))])
-                  (cond
-                    [(null? moves) #f]
-                    [else
-                      (for/or ([b (in-list moves)])
-                        (move b row-rules col-rules (cdr ratings)))]))))))])))
+       (let ([r (car ratings)])
+         (let ([orient (list-ref r 1)]
+               [dex (list-ref r 2)])
+           (let ([aisle (cond [(equal? orient #\r) row-rules]
+                              [(equal? orient #\c) col-rules])])
+             (let ([rule (list-ref aisle dex)])
+               (let ([moves (filter
+                              (λ (board)
+                                (is-legal? board row-rules col-rules))
+                              (map (λ (m)
+                                     (place-move board m orient dex))
+                                   (possible-moves rule (length aisle))))])
+                 (cond
+                   [(null? moves) #f]
+                   [else
+                    (for/or ([b (in-list moves)])
+                      (move b row-rules col-rules (cdr ratings)))]))))))])))
 
 (define aisle-rules->food-required
   (λ (aisle-rules ch)
@@ -85,10 +131,12 @@
                               (make-list (length col-rules) #\_))])
         (move board row-rules col-rules ratings)))))
 
-(print-board
+(define board-print
   (λ (board)
-    (unless (null? board)
-      (map display board)))) ; TODO
+    (cond
+      [(null? board) (void)]
+      [(eq? board #f) (void)]
+      [else (map display board)]))) ; TODO
 
 (define solve
   (λ ([in (current-input-port)])
@@ -103,7 +151,8 @@
             (board-print (run row-rules col-rules))))))))
 
 (module+ main
-  (call-with-input-file "input.txt"
+  (possible-moves (list 5 3) 10)
+  #;(call-with-input-file "input.txt"
                         solve
                         #:mode 'text))
 
