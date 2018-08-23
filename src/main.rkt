@@ -81,7 +81,7 @@
                   (append
                     (map (λ (seg-len)
                            (make-list seg-len #\x))
-                    rule)
+                         rule)
                     (make-list (- len (apply + rule)) #\_))))))])))
 
 (define place-move
@@ -151,8 +151,7 @@
             (board-print (run row-rules col-rules))))))))
 
 (module+ main
-  (possible-moves (list 5 3) 10)
-  #;(call-with-input-file "input.txt"
+  (call-with-input-file "input.txt"
                         solve
                         #:mode 'text))
 
