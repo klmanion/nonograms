@@ -48,7 +48,8 @@
       (for/and ([row (in-list board)]
                 [rule (in-list row-rules)])
         (conforms-to-rule? row rule))
-      (for/and ([col (in-list (for*/list ([i (in-range (- (length (car board)) 1))]
+      (for/and ([col (in-list (for*/list ([i (in-range
+                                               (- (length (car board)) 1))]
                                           [row (in-list board)])
                                 (list-ref row i)))]
                 [rule (in-list col-rules)])
