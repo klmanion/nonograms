@@ -76,7 +76,15 @@
 
 (define place-move
   (λ (board move orient dex)
-    board)) ; TODO
+    (cond
+      [(equal? orient 'row)
+       (let-values ([(head tail) (split-at board dex)])
+         (append head move (cdr tail)))]
+      [(equal? orient 'col)
+       (for*/list ([i (in-range (- (length board) 1))]
+                   [j (in-range (- (length (car board) 1)))])
+         (cond [(= i dex) (list-ref move j)]
+               [else (list-ref (list-ref board i) j)]))])))
 
 (define move
   (λ (board row-rules col-rules ratings)
@@ -88,11 +96,8 @@
                [dex (list-ref r 2)])
            (let ([aisle (cond [(equal? orient 'row) row-rules]
                               [(equal? orient 'col) col-rules])]
-                 [len (length
-                        (cond [(equal? orient 'row) (list-ref board dex)]
-                              [(equal? orient 'col) (map (λ (row)
-                                                           (list-ref row dex))
-                                                         board)]))])
+                 [len (length (cond [(equal? orient 'row) (car board)]
+                                    [(equal? orient 'col) board]))])
              (let ([rule (list-ref aisle dex)])
                (let ([moves (filter
                               (λ (board)
@@ -107,12 +112,12 @@
                       (move b row-rules col-rules (cdr ratings)))]))))))])))
 
 (define aisle-rules->food-required
-  (λ (aisle-rules symb)
+  (λ (aisle-rules orient)
     (for/list ([rule (in-list aisle-rules)]
                [i (in-range (- (length aisle-rules) 1))])
       (list
         (aisle-rule->food-required rule)
-        symb
+        orient
         i))))
 
 (define run
@@ -130,7 +135,7 @@
   (λ (board)
     (cond
       [(null? board) (void)]
-      [(eq? board #f) (void)]
+      [(eq? board #f) (printf "no solutions\n")]
       [else (map display board)]))) ; TODO
 
 (define solve
