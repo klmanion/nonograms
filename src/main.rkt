@@ -29,21 +29,17 @@
 ; segments.
 ; }}}
 
-;; NOTE: The rule lists will always have a list as their element, even if it
-; contains only a single number.
-; Thus many number? predicates can be removed.
-
 (require racket/string
   racket/list)
 
 (define conforms-to-rule?
   (λ (lst rule)
     (let ([seg-lst (string-split (list->string lst) #rx"_")]
-          [num (if (number? rule) 1 (length rule))])
+          [num (length rule)])
       (and
         (= (length seg-lst) num)
         (for/and ([seg (in-list seg-lst)]
-                  [len (if (number? rule) (list rule) rule)])
+                  [len rule])
           (= (string-length seg) len))))))
 
 (define is-legal?
@@ -61,32 +57,22 @@
 (define aisle-rule->food-required
   (λ (rule)
     (cond [(null? rule) 0]
-          [(number? rule) rule]
           [else (+ (apply + rule)
                    (- (length rule) 1))])))
 
 (define possible-moves
   (λ (rule len)
-    (cond
-      [(number? rule)
-       (for ([beg (in-range (- len rule))])
-         (let ([end (+ beg (- rule 1))])
-           (for/list ([i (in-range (- len 1))])
-             (if (and (>= i beg) (<= i end))
-                 #\x
-                 #\_))))]
-      [else
-       (filter
-         (λ (lst)
-           (conforms-to-rule? lst rule))
-         (map flatten
-              (remove-duplicates
-                (permutations
-                  (append
-                    (map (λ (seg-len)
-                           (make-list seg-len #\x))
-                         rule)
-                    (make-list (- len (apply + rule)) #\_))))))])))
+    (filter
+      (λ (lst)
+        (conforms-to-rule? lst rule))
+      (map flatten
+           (remove-duplicates
+             (permutations
+               (append
+                 (map (λ (seg-len)
+                        (make-list seg-len #\x))
+                      rule)
+                 (make-list (- len (apply + rule)) #\_))))))))
 
 (define place-move
   (λ (board move orient dex)
