@@ -25,9 +25,13 @@
 ;
 ; The first segment to place must be one whose aisle's rules determine the
 ; most space.  Keeping in mind that there must be a space between segments,
-; the equation is: the sum of all the lengths + n-1, where n is number of
+; the equation is: the sum of all the lengths + n-1, where n is the number of
 ; segments.
 ; }}}
+
+;; NOTE: The rule lists will always have a list as their element, even if it
+; contains only a single number.
+; Thus many number? predicates can be removed.
 
 (require racket/string
   racket/list)
@@ -96,15 +100,20 @@
        (let ([r (car ratings)])
          (let ([orient (list-ref r 1)]
                [dex (list-ref r 2)])
-           (let ([aisle (cond [(equal? orient #\r) row-rules]
-                              [(equal? orient #\c) col-rules])])
+           (let ([aisle (cond [(equal? orient 'row) row-rules]
+                              [(equal? orient 'col) col-rules])]
+                 [len (length
+                        (cond [(equal? orient 'row) (list-ref board dex)]
+                              [(equal? orient 'col) (map (λ (row)
+                                                           (list-ref row dex))
+                                                         board)]))])
              (let ([rule (list-ref aisle dex)])
                (let ([moves (filter
                               (λ (board)
                                 (is-legal? board row-rules col-rules))
                               (map (λ (m)
                                      (place-move board m orient dex))
-                                   (possible-moves rule (length aisle))))])
+                                   (possible-moves rule len)))])
                  (cond
                    [(null? moves) #f]
                    [else
@@ -112,18 +121,18 @@
                       (move b row-rules col-rules (cdr ratings)))]))))))])))
 
 (define aisle-rules->food-required
-  (λ (aisle-rules ch)
+  (λ (aisle-rules symb)
     (for/list ([rule (in-list aisle-rules)]
                [i (in-range (- (length aisle-rules) 1))])
       (list
         (aisle-rule->food-required rule)
-        ch
+        symb
         i))))
 
 (define run
   (λ (row-rules col-rules)
-    (let ([row-rat (aisle-rules->food-required row-rules #\r)]
-          [col-rat (aisle-rules->food-required col-rules #\c)])
+    (let ([row-rat (aisle-rules->food-required row-rules 'row)]
+          [col-rat (aisle-rules->food-required col-rules 'col)])
       (let ([ratings (sort (append col-rat row-rat)
                            (λ (lst0 lst1)
                              (> (list-ref lst0 0) (list-ref lst1 0))))]
