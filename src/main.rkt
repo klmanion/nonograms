@@ -115,11 +115,36 @@
                #\_)))])))
 
 (define board-print
-  (λ (board)
+  (λ (board [row-rules #f] [col-rules #f])
     (cond
       [(null? board) (void)]
       [(eq? board #f) (printf "no solutions\n")]
-      [else (for-each (λ (row) (printf "~a\n" row)) board)]))) ; TODO
+      [(or (eq? row-rules #f) (eq? col-rules #f))
+       (for ([row (in-list board)])
+         (for-each
+           (λ (e)
+             (printf "|~a" e))
+           row)
+         (printf "|\n"))]
+      [else
+       (begin
+         (for ([row (in-list board)]
+               [rule (in-list row-rules)])
+           (for-each
+             (λ (e)
+               (printf "|~a" e))
+             (append row (list #\space)))
+           (for-each
+             (λ (e)
+               (printf "~a " e))
+             rule)
+           (newline))
+         (for ([i (in-range (apply max (map length col-rules)))])
+           (for ([rule (in-list col-rules)])
+             (if (< i (length rule))
+                 (printf "~a " (list-ref rule i))
+                 (printf "  ")))
+           (newline)))])))
 ;; }}}
 
 ;; Workhorses {{{
@@ -170,7 +195,7 @@
                              (map string->number (string-split (read-line))))]
                 [col-rules (for/list ([w (in-range W)])
                              (map string->number (string-split (read-line))))])
-            (board-print (run row-rules col-rules))))))))
+            (board-print (run row-rules col-rules) row-rules col-rules)))))))
 ;; }}}
 
 ;; main {{{
