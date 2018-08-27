@@ -36,22 +36,20 @@
 ;
 (define conforms-to-rule?
   (λ (lst rule)
-    (let ([seg-lst (string-split (list->string lst) #rx"_")]
-          [num (length rule)])
+    (let ([seg-lst (remove* (list "")
+                            (string-split (list->string lst) #rx"_"))])
       (and
-        (= (length seg-lst) num)
+        (= (length seg-lst) (length rule))
         (for/and ([seg (in-list seg-lst)]
                   [len (in-list rule)])
           (= (string-length seg) len))))))
 
 (define breaks-rule?
   (λ (lst rule)
-    (let ([seg-lst (string-split (list->string lst) #rx"_")]
-          [num (length rule)])
-      (or
-        (> (length seg-lst) num)
-        (> (apply + (map string-length seg-lst))
-           (apply + rule))))))
+    (let ([seg-lst (remove* (list "")
+                            (string-split (list->string lst) #rx"_"))])
+      (> (apply + (map string-length seg-lst))
+         (apply + rule)))))
 
 (define is-legal?
   (λ (board row-rules col-rules)
@@ -92,8 +90,8 @@
     (filter
       (λ (move)
         (conforms-to-rule? move rule))
-      (map flatten
-           (remove-duplicates
+      (remove-duplicates
+        (map flatten
              (permutations
                (append
                  (map (λ (seg-len)
@@ -106,19 +104,22 @@
     (cond
       [(equal? orient 'row)
        (let-values ([(head tail) (split-at board dex)])
-         (append head move (cdr tail)))]
+         (append head (list move) (cdr tail)))]
       [(equal? orient 'col)
        (for/list ([i (in-range (length board))])
          (for/list ([j (in-range (length (car board)))])
-           (cond [(= j dex) (list-ref move i)]
-                 [else (list-ref (list-ref board i) j)])))])))
+           (if (or (and (= j dex)
+                        (eq? (list-ref move i) #\x))
+                   (eq? (list-ref (list-ref board i) j) #\x))
+               #\x
+               #\_)))])))
 
 (define board-print
   (λ (board)
     (cond
       [(null? board) (void)]
       [(eq? board #f) (printf "no solutions\n")]
-      [else (map (λ (row) (printf "~a\n" row)) board)]))) ; TODO
+      [else (for-each (λ (row) (printf "~a\n" row)) board)]))) ; TODO
 ;; }}}
 
 ;; Workhorses {{{
@@ -135,7 +136,6 @@
                               [(equal? orient 'col) col-rules])]
                  [len (length (cond [(equal? orient 'row) (car board)]
                                     [(equal? orient 'col) board]))])
-             (board-print board)
              (let ([rule (list-ref rules dex)])
                (let ([moves (filter
                               (λ (board)
