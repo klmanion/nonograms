@@ -142,7 +142,7 @@
          (for ([i (in-range (apply max (map length col-rules)))])
            (for ([rule (in-list col-rules)])
              (if (< i (length rule))
-                 (printf "~a " (list-ref rule i))
+                 (printf " ~a" (list-ref rule i))
                  (printf "  ")))
            (newline)))])))
 ;; }}}
